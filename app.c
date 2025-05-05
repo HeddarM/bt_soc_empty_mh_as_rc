@@ -31,9 +31,17 @@
 #include "app_assert.h"
 #include "sl_bluetooth.h"
 #include "app.h"
+#include "app_log.h"
+#include "sl_sensor_rht.h"
 
 // The advertising set handle allocated from Bluetooth stack.
 static uint8_t advertising_set_handle = 0xff;
+/**************************************************************************//**
+ * Declaration de variables
+ *****************************************************************************/
+uint32_t  humidite = 0;
+int32_t  temperature = 0;
+
 
 /**************************************************************************//**
  * Application Init.
@@ -42,6 +50,7 @@ SL_WEAK void app_init(void)
 {
   /////////////////////////////////////////////////////////////////////////////
   // Put your additional application init code here!                         //
+  app_log_info("%s\n",__FUNCTION__);
   // This is called once during start-up.                                    //
   /////////////////////////////////////////////////////////////////////////////
 }
@@ -99,11 +108,15 @@ void sl_bt_on_event(sl_bt_msg_t *evt)
     // -------------------------------
     // This event indicates that a new connection was opened.
     case sl_bt_evt_connection_opened_id:
+      app_log_info("%s: connection_opened!\n",__FUNCTION__);
+      sl_sensor_rht_init();   //Initialisation du capteur
       break;
 
     // -------------------------------
     // This event indicates that a connection was closed.
     case sl_bt_evt_connection_closed_id:
+      app_log_info("%s: connection_closed!\n",__FUNCTION__);
+      sl_sensor_rht_deinit();     // Désinitialisation du capteur
       // Generate data for advertising
       sc = sl_bt_legacy_advertiser_generate_data(advertising_set_handle,
                                                  sl_bt_advertiser_general_discoverable);
@@ -118,6 +131,16 @@ void sl_bt_on_event(sl_bt_msg_t *evt)
     ///////////////////////////////////////////////////////////////////////////
     // Add additional event handlers here as your application requires!      //
     ///////////////////////////////////////////////////////////////////////////
+    // This event indicates that a lecture has been done
+    case sl_bt_evt_gatt_server_user_read_request_id:
+      app_log_info("%s: Lecture_completed!\n",__FUNCTION__);
+      sc = sl_sensor_rht_get(&humidite, &temperature) ;
+      app_assert_status(sc); //verification que la fonction a bien réussie
+
+      //Récupération température et humidité
+      app_log_info("Température = %ld, Humidité = %lu \n",temperature, humidite);
+      break;
+
 
     // -------------------------------
     // Default event handler.
