@@ -27,20 +27,23 @@
  * 3. This notice may not be removed or altered from any source distribution.
  *
  ******************************************************************************/
+
+#include "temperature.h"
+
 #include "em_common.h"
 #include "app_assert.h"
 #include "sl_bluetooth.h"
 #include "app.h"
 #include "app_log.h"
 #include "sl_sensor_rht.h"
+#include "gatt_db.h"
 
 // The advertising set handle allocated from Bluetooth stack.
 static uint8_t advertising_set_handle = 0xff;
 /**************************************************************************//**
  * Declaration de variables
  *****************************************************************************/
-uint32_t  humidite = 0;
-int32_t  temperature = 0;
+
 
 
 /**************************************************************************//**
@@ -133,12 +136,35 @@ void sl_bt_on_event(sl_bt_msg_t *evt)
     ///////////////////////////////////////////////////////////////////////////
     // This event indicates that a lecture has been done
     case sl_bt_evt_gatt_server_user_read_request_id:
-      app_log_info("%s: Lecture_completed!\n",__FUNCTION__);
-      sc = sl_sensor_rht_get(&humidite, &temperature) ;
-      app_assert_status(sc); //verification que la fonction a bien réussie
 
-      //Récupération température et humidité
-      app_log_info("Température = %ld, Humidité = %lu \n",temperature, humidite);
+      if (evt->data.evt_gatt_server_user_read_request.characteristic == gattdb_temperature)
+      {
+          uint16_t sent_len = 0;
+
+          app_log_info("evt_gatt_server_user_read_request.characteristic : gattdb_temperature \n");
+          int16_t temp = lect_temp ();
+
+          uint8_t tableau_temp[2];
+
+          tableau_temp[0] = 1;
+          tableau_temp[1] = 2;
+
+          sc = sl_bt_gatt_server_send_user_read_response (evt->data.evt_gatt_server_user_read_request.connection,
+                                                          gattdb_temperature,
+                                                          0,
+                                                          sizeof(temp),
+                                                          tableau_temp,
+                                                          &sent_len);
+          app_assert_status(sc);
+           if (sc != SL_STATUS_OK)
+             {
+               app_log_info("reponse non recue");
+             }
+           else
+             {
+               app_log_info("reponse recue avec sent len = %u", sent_len);
+             }
+      }
       break;
 
 
