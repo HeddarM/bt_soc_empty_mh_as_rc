@@ -43,8 +43,10 @@ static uint8_t advertising_set_handle = 0xff;
 /**************************************************************************//**
  * Declaration de variables
  *****************************************************************************/
+int timer_step = 0;
+static sl_sleeptimer_timer_handle_t timer_handle;
 
-
+void timer_callback(sl_sleeptimer_timer_handle_t *handle_timer, void *data);
 
 /**************************************************************************//**
  * Application Init.
@@ -158,13 +160,38 @@ void sl_bt_on_event(sl_bt_msg_t *evt)
           app_assert_status(sc);
            if (sc != SL_STATUS_OK)
              {
-               app_log_info("reponse non recue");
+               app_log_info("reponse non recue \n");
              }
            else
              {
-               app_log_info("reponse recue avec sent len = %u", sent_len);
+               app_log_info("reponse recue avec sent len = %u \n", sent_len);
              }
       }
+      break;
+
+    case sl_bt_evt_gatt_server_characteristic_status_id:
+
+      uint16_t characteristic = evt->data.evt_gatt_server_characteristic_status.characteristic;
+      uint8_t status_flag = evt->data.evt_gatt_server_characteristic_status.status_flags;
+      uint16_t client_config_flag = evt->data.evt_gatt_server_characteristic_status.client_config_flags;
+
+
+      if (characteristic == gattdb_temperature &&
+          status_flag == 1 &&
+          client_config_flag == 1 )
+        {
+          sl_sleeptimer_start_periodic_timer_ms( &timer_handle,
+                                                 1000,                       // période en ms = 1s
+                                                 timer_callback,             // fonction appelée à toutes les 1s
+                                                 NULL,                       // pas de données pour l'instant
+                                                 0,                          //
+                                                 0);
+
+          app_log_info("notify detected with characteristic status : %u  et client config flag %u \n", status_flag, client_config_flag);
+          lect_temp ();
+        }
+
+
       break;
 
 
@@ -173,4 +200,13 @@ void sl_bt_on_event(sl_bt_msg_t *evt)
     default:
       break;
   }
+}
+
+void timer_callback(sl_sleeptimer_timer_handle_t *handle_timer, void *data)
+{
+  (void)handle_timer;
+  (void)data;
+
+  timer_step++;
+  app_log_info("Timer step %d\n", timer_step);
 }
