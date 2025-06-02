@@ -37,6 +37,11 @@
 #include "app_log.h"
 #include "sl_sensor_rht.h"
 #include "gatt_db.h"
+#include "sl_bt_api.h"
+#include "sl_simple_led_instances.h"
+
+
+#define TEMPERATURE_TIMER_SIGNAL (1<<0)
 
 // The advertising set handle allocated from Bluetooth stack.
 static uint8_t advertising_set_handle = 0xff;
@@ -194,6 +199,52 @@ void sl_bt_on_event(sl_bt_msg_t *evt)
 
       break;
 
+    case sl_bt_evt_system_external_signal_id :
+
+      sl_sleeptimer_start_periodic_timer_ms( &timer_handle,
+                                             1000,                       // période en ms = 1s
+                                             timer_callback,             // fonction appelée à toutes les 1s
+                                             NULL,                       // pas de données pour l'instant
+                                             0,                          //
+                                             0);
+
+      uint8_t tableau_temp[2];
+
+      if (evt->data.evt_system_external_signal.extsignals == TEMPERATURE_TIMER_SIGNAL)
+        {
+            // lecture de la température
+            int16_t temperature = lect_temp();
+
+            // envoie la température toutes les secondes via notification
+            sl_bt_gatt_server_send_notification(evt->data.evt_connection_opened.connection,
+                                                gattdb_temperature,
+                                                sizeof(temperature),
+                                                (uint8_t *)&tableau_temp );
+         }
+      break;
+
+    case sl_bt_evt_gatt_server_user_write_request_id :
+
+      sl_simple_led_init_instances();
+      uint8_t len =  evt->data.evt_gatt_server_user_write_request.value.len;
+      uint8_t* data =  evt->data.evt_gatt_server_user_write_request.value.data;
+
+      if (evt->data.evt_gatt_server_user_read_request.characteristic == gattdb_digital )
+        {
+          app_log_info("write of the characteristic digital \n");
+
+          app_log_info("Voici ce qui a ete ecrit :  ");
+          for (uint8_t i = 0; i < len; i++)
+          {
+              app_log("%u ", data[i]);
+          }
+          app_log("\n");
+
+          sl_led_turn_on(&sl_led_led0);
+        }
+
+      break;
+
 
     // -------------------------------
     // Default event handler.
@@ -209,4 +260,6 @@ void timer_callback(sl_sleeptimer_timer_handle_t *handle_timer, void *data)
 
   timer_step++;
   app_log_info("Timer step %d\n", timer_step);
+
+  sl_bt_external_signal(TEMPERATURE_TIMER_SIGNAL);
 }

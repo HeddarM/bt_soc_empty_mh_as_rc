@@ -87,4 +87,19 @@
       </properties>
     </characteristic>
   </service>
+
+  <!--Automation IO-->
+  <service advertise="false" id="automation_io" name="Automation IO" requirement="mandatory" sourceId="" type="primary" uuid="1815">
+
+    <!--Digital-->
+    <characteristic const="false" id="digital" name="Digital" sourceId="" uuid="91a05d08-f96c-4ab5-ba62-81b785861e21">
+      <value length="0" type="user" variable_length="false">00</value>
+      <properties>
+        <write_no_response authenticated="false" bonded="false" encrypted="false"/>
+      </properties>
+    </characteristic>
+  </service>
+
+  <!--Custom Service-->
+  <service advertise="false" name="Custom Service" requirement="mandatory" sourceId="" type="primary" uuid="a6aeafc8-9fb2-4ffd-b1c9-217d8f86654a"/>
 </gatt>
